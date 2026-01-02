@@ -1,0 +1,221 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo Fintech Dashboard</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { margin:0; font-family:Arial; background:#121212; color:#fff; }
+  input, button { padding:8px; margin:5px; border-radius:4px; border:none; }
+  button { background:#1E88E5; color:white; cursor:pointer; }
+  button:hover { background:#1565C0; }
+  .card { border:1px solid #444; padding:10px; margin:10px; border-radius:6px; background:#1E1E1E; }
+  .gold-card { border:2px solid gold; padding:10px; margin:10px; border-radius:6px; background:#1E1E1E; }
+  ul { padding-left:20px; }
+  li { margin-bottom:4px; }
+  h1,h2,h3 { margin:10px 0; }
+  canvas { background:#1E1E1E; border-radius:6px; margin:10px 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// --- Demo Data ---
+const demoUser = { email:"demo@finance-demo.com", password:"DemoPass123" };
+
+const initialData = {
+  totalNetWorth: 4872430.18,
+  accounts:[
+    {name:"Elon Musk – Tesla Company Account",type:"Checking",balance:1245880.42},
+    {name:"Investment Brokerage",type:"Investment",balance:2980300.00,assets:[
+      {name:"Tesla Inc.",ticker:"TSLA",value:1420000},
+      {name:"NVIDIA",ticker:"NVDA",value:640000},
+      {name:"S&P 500 ETF",ticker:"SPY",value:920300}
+    ]}
+  ],
+  crypto:[
+    {coin:"BTC",balance:12.4,valueUSD:518000},
+    {coin:"ETH",balance:188,valueUSD:421000},
+    {coin:"SOL",balance:4200,valueUSD:392000}
+  ],
+  transactions:[
+    {date:"2026-01-01",description:"TSLA Share Purchase",category:"Investment",amount:-125000},
+    {date:"2025-12-30",description:"SpaceX Secondary Allocation",category:"Private Equity",amount:-250000},
+    {date:"2025-12-29",description:"Dividend – S&P 500 ETF",category:"Income",amount:8420},
+    {date:"2025-12-28",description:"NVIDIA Options Premium",category:"Investment",amount:42300},
+    {date:"2025-12-27",description:"Wire Transfer – Tesla Operations",category:"Transfer",amount:-500000},
+    {date:"2025-12-26",description:"Crypto Purchase – ETH",category:"Crypto",amount:-75000},
+    {date:"2025-12-26",description:"Consulting Revenue",category:"Income",amount:180000},
+    {date:"2025-12-25",description:"TSLA Stock Sale",category:"Investment",amount:150000}
+  ],
+  aiInsights:[
+    {text:"Portfolio heavily tilted toward growth equities (TSLA, NVDA)"},
+    {text:"Liquidity runway: 18.4 months at current burn"},
+    {text:"Crypto volatility increasing correlation with equities"},
+    {text:"Suggested action: rebalance 8–12% into cash or bonds"}
+  ]
+};
+
+// --- App ---
+function App() {
+  const [token,setToken] = useState(null);
+  return token ? <Dashboard logout={()=>setToken(null)} /> : <Login onLogin={()=>setToken("demo-token")} />;
+}
+
+// --- Login ---
+function Login({onLogin}) {
+  const [email,setEmail] = useState('');
+  const [password,setPassword] = useState('');
+  const [error,setError] = useState('');
+
+  const handleLogin = e => {
+    e.preventDefault();
+    if(email===demoUser.email && password===demoUser.password) onLogin();
+    else setError("Invalid credentials");
+  }
+
+  return (
+    <div style={{padding:20}}>
+      <h2>Demo Login (All data simulated)</h2>
+      <form onSubmit={handleLogin}>
+        <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} /><br/>
+        <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} /><br/>
+        <button type="submit">Login</button>
+      </form>
+      <p style={{color:'red'}}>{error}</p>
+      <p>Demo user: demo@finance-demo.com / DemoPass123</p>
+    </div>
+  )
+}
+
+// --- Pie Chart ---
+function PieChart({labels,data}) {
+  const canvasRef = useRef();
+  useEffect(()=>{
+    const ctx = canvasRef.current.getContext('2d');
+    new Chart(ctx,{
+      type:'doughnut',
+      data:{ labels, datasets:[{data, backgroundColor:['#FFD700','#1E88E5','#43A047','#F4511E','#8E24AA']} ] },
+      options:{ plugins:{ legend:{ labels:{ color:'#fff' } } } }
+    });
+  },[labels,data]);
+  return <canvas ref={canvasRef} width={200} height={200}></canvas>
+}
+
+// --- Animated Counter Hook ---
+function useCountUp(target, duration=2000) {
+  const [value,setValue] = useState(0);
+  useEffect(()=>{
+    let start = 0;
+    const step = target / (duration / 16);
+    const interval = setInterval(()=>{
+      start += step;
+      if(start>=target){ start=target; clearInterval(interval); }
+      setValue(Math.floor(start));
+    },16);
+    return ()=>clearInterval(interval);
+  },[target,duration]);
+  return value;
+}
+
+// --- Dashboard ---
+function Dashboard({logout}) {
+  const [data,setData] = useState(initialData);
+  const [message,setMessage] = useState('');
+  const [cot,setCot] = useState('');
+  const [currentCOT,setCurrentCOT] = useState(null);
+
+  const totalNetWorth = useCountUp(data.totalNetWorth);
+
+  const generateCOT = () => {
+    const newCOT = Math.floor(100000 + Math.random()*900000).toString();
+    setCurrentCOT(newCOT);
+    alert("Demo COT generated! Check console for demo value.");
+    console.log("Demo COT code:", newCOT);
+  }
+
+  const transfer = () => {
+    if(cot!==currentCOT) { setMessage("Invalid COT code"); return; }
+    if(data.accounts[0].balance>=50000){
+      const updated = {...data};
+      updated.accounts[0].balance -= 50000;
+      updated.accounts[1].balance += 50000;
+      updated.transactions.unshift({date:new Date().toISOString().split('T')[0],description:"Demo Transfer",category:"Transfer",amount:-50000});
+      setData(updated);
+      setMessage("Demo transfer $50,000 executed");
+      setCurrentCOT(null);
+      setCot('');
+    } else setMessage("Insufficient balance");
+  }
+
+  const accountValues = data.accounts.map(a => a.balance);
+  const accountLabels = data.accounts.map(a => a.name);
+  const cryptoValues = data.crypto.map(c => c.valueUSD);
+  const cryptoLabels = data.crypto.map(c => c.coin);
+
+  return (
+    <div style={{padding:20}}>
+      <button onClick={logout} style={{float:'right'}}>Logout</button>
+      <h1>Total Net Worth: ${totalNetWorth.toLocaleString()} (Simulated)</h1>
+
+      <h2>Accounts Overview</h2>
+      <PieChart labels={accountLabels} data={accountValues} />
+
+      {data.accounts.map((a,i)=>(
+        <div key={i} className="card">
+          <strong>{a.name}</strong>
+          <p>Type: {a.type}</p>
+          <p>Balance: ${a.balance.toLocaleString()}</p>
+        </div>
+      ))}
+
+      <div className="gold-card">
+        <h3>Tesla, Inc. (TSLA)</h3>
+        <p>Shares (Demo): 4,250</p>
+        <p>Avg Cost: $215.40</p>
+        <p>Current Price: $334.80</p>
+        <p>Unrealized Gain: +$505,450 (+55.2%)</p>
+        <p style={{fontSize:12,color:'gray'}}>Simulated demo data only</p>
+      </div>
+
+      <h2>Crypto Portfolio</h2>
+      <PieChart labels={cryptoLabels} data={cryptoValues} />
+
+      <button onClick={generateCOT}>Generate COT Code</button>
+      <input value={cot} onChange={e=>setCot(e.target.value)} placeholder="Enter COT code" />
+      <button onClick={transfer}>Demo Transfer $50,000</button>
+      <p>{message}</p>
+
+      <h2>Recent Transactions</h2>
+      <ul>
+        {data.transactions.map((t,i)=><li key={i} style={{color:t.amount>0?'green':'red'}}>
+          {t.date}: {t.description} ({t.category}) ${t.amount.toLocaleString()}
+        </li>)}
+      </ul>
+
+      <h2>AI Insights</h2>
+      <ul>
+        {data.aiInsights.map((ins,i)=><li key={i}>{ins.text}</li>)}
+      </ul>
+
+      <footer style={{marginTop:20,fontSize:12,color:'gray'}}>
+        Demo Environment – All balances, companies, and transactions are simulated
+      </footer>
+    </div>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
